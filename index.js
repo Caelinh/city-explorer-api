@@ -1,11 +1,12 @@
 'use strict';
 
 require('dotenv').config();
+const axios = require('axios').default;
 
 const express = require('express');
 
 const cors = require('cors');
-const data = require('./data/weather.json');
+const { response } = require('express');
 
 const app = express(); // returns an object, with methods designed to handle Requests.
 const PORT = process.env.PORT;
@@ -15,31 +16,69 @@ app.use(cors());
 class Forecast {
     constructor(obj) {
         this.date = obj.datetime;
-        this.description = 'low of ' + obj.low_temp + ', high of ' + obj.high_temp + ' with ' + obj.weather.description.toLowerCase();
+        this.description = 'Low of ' + obj.low_temp + ', High of ' + obj.high_temp + ' with ' + obj.weather.description.toLowerCase();
+        this.icon = obj.weather.icon;
     }
 }
 
 
-app.get('/weather', (request, response) => {
+async function handleRequest(url) {
+
+    try {
+        let response = await axios.get(url);
+        return response;
+    } catch (e) {
+        throw new Error(e);
+    }
+}
+
+app.get('/weather', async (request, response) => {
 
     let { lat, lon, searchQuery } = request.query;
-
     if (!lat || !lon || !searchQuery) {
         throw new Error('Please send lat, lon, and search query string.');
     }
 
-    let city = data.find(city => {
-        return city.city_name.toLowerCase() === searchQuery.toLowerCase();
-    });
+    let url = `http://api.weatherbit.io/v2.0/forecast/daily?key=${process.env.WEATHER_API_KEY}&lat=${lat}&lon=${lon}&units=I`;
 
-    if (city) {
-        let forecastData = city.data.map(forecast => new Forecast(forecast));
-        response.send(forecastData);
-    } else {
-        response.status(404).send('City not found');
+    try {
+        let res = await handleRequest(url);
+        if (res) {
+            let forecastData = res.data.data.map(forecast => new Forecast(forecast));
+            response.send(forecastData);
+        } else {
+            response.status(404).send('City not found');
+        }
+    } catch (e) {
+        console.log(e);
+    }
+
+});
+
+class Movies {
+    constructor(obj) {
+        this.title = obj.title;
+        this.releaseDate = obj.release_date;
+        this.poster = obj.poster_path;
+        this.overview = obj.overview;
     }
 }
-);
+
+app.get('/movies', async (request, response) => {
+    let { searchQuery } = request.query;
+
+    let url = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${searchQuery}&adult=false`;
+    try {
+        let res = await handleRequest(url);
+        let movieData = res.data.results.map(movie => new Movies(movie));
+        response.send(movieData);
+
+    } catch (e) {
+        console.log(e);
+    }
+});
+
+
 
 // error handlers take a special 1st parameter, that will be any error thrown from another route handler
 app.use('*', (error, request, response,) => {
