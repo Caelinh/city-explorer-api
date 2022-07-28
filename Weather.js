@@ -5,6 +5,7 @@ require('dotenv').config();
 
 
 
+let cityCache = require('./Cache.js');
 
 
 async function handleRequest(url) {
@@ -34,18 +35,27 @@ async function gatherWeather(request, response) {
 
     let url = `http://api.weatherbit.io/v2.0/forecast/daily?key=${process.env.WEATHER_API_KEY}&lat=${lat}&lon=${lon}&units=I`;
 
-    try {
-        let res = await handleRequest(url);
-        if (res) {
-            let forecastData = res.data.data.map(forecast => new Forecast(forecast));
-            response.send(forecastData);
-        } else {
-            response.status(404).send('City not found');
-        }
-    } catch (e) {
-        console.log(e);
-    }
+    if (cityCache[searchQuery] && (Date.now() - cityCache[searchQuery].timestamp < 50000)) {
+        console.log('Data found in cache', cityCache);
+        response.send(cityCache[searchQuery]);
+        console.log(Date.now());
+    } else {
+        try {
+            let res = await handleRequest(url);
 
+            if (res) {
+                let forecastData = res.data.data.map(forecast => new Forecast(forecast));
+                cityCache[searchQuery] = {};
+                cityCache[searchQuery].timestamp = Date.now();
+                cityCache[searchQuery] = forecastData;
+                response.send(forecastData);
+            } else {
+                response.status(404).send('City not found');
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    }
 }
 
 module.exports = gatherWeather;
