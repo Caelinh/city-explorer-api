@@ -13,6 +13,7 @@ const PORT = process.env.PORT;
 
 app.use(cors());
 
+
 const gatherWeather = require('./Weather');
 const gatherMovies = require('./Movies');
 
