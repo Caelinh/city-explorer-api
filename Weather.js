@@ -38,7 +38,6 @@ async function gatherWeather(request, response) {
     if (cityCache[searchQuery] && (Date.now() - cityCache[searchQuery].timestamp < 50000)) {
         console.log('Data found in cache', cityCache);
         response.send(cityCache[searchQuery]);
-        console.log(Date.now());
     } else {
         try {
             let res = await handleRequest(url);

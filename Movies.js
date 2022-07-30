@@ -1,7 +1,7 @@
 const axios = require('axios').default;
 require('dotenv').config();
 
-let movieCache = {};
+let movieCache = require('./Cache');
 
 async function handleRequest(url) {
 
@@ -27,13 +27,15 @@ class Movies {
 const gatherMovies = async (request, response) => {
     let { searchQuery } = request.query;
     let url = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${searchQuery}&adult=false`;
-    if (movieCache[searchQuery]) {
+    if (movieCache[searchQuery]&& (Date.now() - movieCache[searchQuery].timestamp < 50000)) {
         console.log('Data found in cache', movieCache);
         response.send(movieCache[searchQuery]);
     } else {
         try {
             let res = await handleRequest(url);
             let movieData = res.data.results.map(movie => new Movies(movie));
+            movieCache[searchQuery] = {};
+            movieCache[searchQuery].timestamp = Date.now();
             movieCache[searchQuery] = movieData;
             response.send(movieData);
 
